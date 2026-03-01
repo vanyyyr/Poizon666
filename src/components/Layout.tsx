@@ -18,8 +18,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
     return (
         <div className="flex flex-col min-h-screen pb-20">
-            {/* Header */}
-            <header className="px-6 py-4 glass-panel rounded-none border-t-0 border-x-0 sticky top-0 z-50 flex items-center justify-center">
+            {/* Header with safe area for iPhone notch */}
+            <header className="px-6 py-4 pt-[max(1rem,env(safe-area-inset-top,1rem))] glass-panel rounded-none border-t-0 border-x-0 sticky top-0 z-50 flex items-center justify-center">
                 <h1 className="font-display font-bold text-xl uppercase tracking-[0.2em] bg-gradient-to-r from-brand-cyan to-brand-purple bg-clip-text text-transparent">
                     Poizon666
                 </h1>
@@ -32,8 +32,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 </div>
             </main>
 
-            {/* Bottom Navigation */}
-            <nav className="fixed bottom-0 left-0 right-0 glass-panel rounded-none border-x-0 border-b-0 pb-safe">
+            {/* Bottom Navigation with safe area for iPhone home indicator */}
+            <nav className="fixed bottom-0 left-0 right-0 glass-panel rounded-none border-x-0 border-b-0 pb-[max(0.75rem,env(safe-area-inset-bottom,0.75rem))]">
                 <ul className="flex items-center justify-around px-4 py-3">
                     {navItems.map((item) => {
                         const isActive = location.pathname === item.path
