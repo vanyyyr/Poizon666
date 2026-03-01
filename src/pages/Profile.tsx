@@ -37,6 +37,8 @@ export default function Profile() {
 
     const tgUser = WebApp.initDataUnsafe?.user
 
+    const ADMIN_IDS = [709766413, 1216235790]
+
     useEffect(() => {
         const savedProfile = localStorage.getItem('poizon_profile')
         if (savedProfile) {
@@ -47,7 +49,12 @@ export default function Profile() {
         } else if (tgUser) {
             setFullname(tgUser.first_name + (tgUser.last_name ? ' ' + tgUser.last_name : ''))
         }
-        setIsAdmin(true)
+
+        if (tgUser && ADMIN_IDS.includes(tgUser.id)) {
+            setIsAdmin(true)
+        } else {
+            setIsAdmin(false)
+        }
     }, [tgUser])
 
     useEffect(() => {

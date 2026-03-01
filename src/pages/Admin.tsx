@@ -3,7 +3,7 @@ import { api } from '../api'
 import { Settings2, Save, Users, TrendingUp, PackageSearch, ChevronDown, Lock, RefreshCw, Send, Megaphone, Trash2, Edit3, X, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-const ADMIN_PASSWORD = 'qwerty'
+const ADMIN_PASSWORD = 'qwerty' // Измените 'qwerty' на любой надежный пароль
 
 interface OrderItem {
     product_link: string;
