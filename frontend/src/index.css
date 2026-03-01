@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Outfit', sans-serif;
+  --font-display: 'Syncopate', sans-serif;
+  
+  --color-brand-cyan: #00f2fe;
+  --color-brand-purple: #4facfe;
+  
+  --color-dark-bg: #09090b;
+  --color-dark-card: rgba(24, 24, 27, 0.7);
+  --color-dark-border: rgba(255, 255, 255, 0.1);
+}
+
+@layer base {
+  :root {
+    --bg-color: #ffffff;
+    --text-color: #09090b;
+  }
+  
+  .dark {
+    --bg-color: #09090b;
+    --text-color: #ffffff;
+  }
+  
+  body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    background-image: 
+      radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+      radial-gradient(at 50% 0%, hsla(225,39%,30%,0.2) 0, transparent 50%), 
+      radial-gradient(at 100% 0%, hsla(339,49%,30%,0.2) 0, transparent 50%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+}
+
+.glass-panel {
+  @apply bg-zinc-900/60 backdrop-blur-md border border-white/10 rounded-3xl shadow-xl;
+}
+
+.glass-input {
+  @apply w-full bg-zinc-800/50 border border-white/10 rounded-2xl px-4 py-3 text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-brand-cyan/50 transition-all duration-300;
+}
+
+.btn-primary {
+  @apply relative overflow-hidden rounded-2xl px-6 py-4 font-bold text-white shadow-lg transition-transform hover:scale-105 active:scale-95;
+  background: linear-gradient(135deg, var(--color-brand-purple) 0%, var(--color-brand-cyan) 100%);
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.stagger-1 { animation-delay: 100ms; }
+.stagger-2 { animation-delay: 200ms; }
+.stagger-3 { animation-delay: 300ms; }
+.stagger-4 { animation-delay: 400ms; }
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
