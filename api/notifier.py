@@ -60,6 +60,9 @@ def notify_new_order(
         comment = item.get('comment', '')
         if comment:
             items_text += f"\n     💬 {comment}"
+        image_url = item.get('image_url', '')
+        if image_url:
+            items_text += f"\n     📸 <a href='{image_url}'>Фото товара</a>"
 
     # Build clickable user link
     if username:
