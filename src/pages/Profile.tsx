@@ -35,7 +35,7 @@ export default function Profile() {
         localStorage.setItem('poizon_profile', JSON.stringify({ fullname, phone, address }))
         setIsSaved(true)
         toast.success('Profile saved!')
-        if (window.Telegram?.WebApp) {
+        if ((window as any).Telegram?.WebApp) {
             WebApp.HapticFeedback.notificationOccurred('success')
         }
         setTimeout(() => setIsSaved(false), 2000)
