@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
+import traceback
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +18,6 @@ app.add_middleware(
 _migrated = False
 
 def run_migrations():
-    """Auto-migrate database schema — add missing columns."""
     global _migrated
     if _migrated:
         return
@@ -25,7 +25,6 @@ def run_migrations():
         from api.database import engine
         from sqlalchemy import text
         with engine.connect() as conn:
-            # Add commission_percent if missing (rename from commission)
             conn.execute(text("""
                 DO $$
                 BEGIN
@@ -42,17 +41,19 @@ def run_migrations():
                     END IF;
                 END $$;
             """))
-            # Update old high commission values (1500 was a fixed fee, now it's %)
             conn.execute(text("UPDATE settings SET commission_percent = 10.0 WHERE commission_percent > 100"))
             conn.commit()
         _migrated = True
         logger.info("Database migration completed successfully")
     except Exception as e:
         logger.error(f"Migration failed: {e}")
-        _migrated = True  # Don't retry on every request
+        _migrated = True
 
-# Run migrations on import (before first request)
-run_migrations()
+# Try migration but don't crash if it fails
+try:
+    run_migrations()
+except Exception:
+    pass
 
 # Import and include routers
 from api.routers import orders, settings, broadcast
@@ -64,3 +65,38 @@ app.include_router(broadcast.router, prefix="/api/broadcast", tags=["broadcast"]
 @app.get("/api/health")
 def health_check():
     return {"status": "ok", "message": "Poizon666 Backend is running!"}
+
+@app.get("/api/db-test")
+def db_test():
+    """Diagnostic endpoint to test database connectivity."""
+    from api.database import test_connection, DATABASE_URL
+    result = test_connection()
+    # Show a safe preview of the URL (hide password)
+    url_parts = DATABASE_URL.split("@")
+    safe_url = "***@" + url_parts[-1] if len(url_parts) > 1 else "***"
+    result["connection_string"] = safe_url
+    
+    # Also try to query settings table
+    if result["status"] == "connected":
+        try:
+            from api.database import engine
+            from sqlalchemy import text
+            with engine.connect() as conn:
+                # Check what columns exist in settings
+                cols = conn.execute(text(
+                    "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'settings' ORDER BY ordinal_position"
+                ))
+                result["settings_columns"] = [{"name": r[0], "type": r[1]} for r in cols]
+                
+                # Try to read settings
+                row = conn.execute(text("SELECT * FROM settings LIMIT 1"))
+                columns = row.keys()
+                first = row.first()
+                if first:
+                    result["settings_data"] = dict(zip(columns, first))
+                else:
+                    result["settings_data"] = "no rows"
+        except Exception as e:
+            result["settings_error"] = str(e)
+    
+    return result
