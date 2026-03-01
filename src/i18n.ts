@@ -44,10 +44,10 @@ const translations: Record<string, Record<Lang, string>> = {
 
     // Delivery
     'delivery.title': { ru: 'Доставка', en: 'Delivery', zh: '配送' },
-    'delivery.address': { ru: 'Адрес доставки', en: 'Delivery address', zh: '收货地址' },
+    'delivery.address': { ru: 'Свой адрес из Профиля', en: 'Address from Profile', zh: '个人资料中的地址' },
     'delivery.pickup': { ru: 'Самовывоз', en: 'Pickup', zh: '自提' },
-    'delivery.pickup_msk': { ru: '📍 Москва', en: '📍 Moscow', zh: '📍 莫斯科' },
-    'delivery.pickup_spb': { ru: '📍 Санкт-Петербург', en: '📍 St. Petersburg', zh: '📍 圣彼得堡' },
+    'delivery.pickup_msk': { ru: 'Самовывоз МСК', en: 'Pickup Moscow', zh: '莫斯科自提' },
+    'delivery.pickup_spb': { ru: 'Самовывоз СПБ', en: 'Pickup SPb', zh: '圣彼得堡自提' },
     'delivery.or_address': { ru: 'Или введите адрес:', en: 'Or enter address:', zh: '或输入地址：' },
     'delivery.address_placeholder': { ru: 'г. Москва, ул. Пушкина, ПВЗ СДЭК', en: 'City, Street, Pickup Point', zh: '城市，街道，取货点' },
 

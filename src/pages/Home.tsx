@@ -203,7 +203,7 @@ export default function Home() {
                                 ) : (
                                     <label className="flex items-center justify-center gap-2 glass-input cursor-pointer text-xs text-zinc-400 hover:text-brand-cyan hover:border-brand-cyan/30 transition-colors py-4">
                                         <span>📷</span> {t('order.image_placeholder', lang)}
-                                        <input type="file" accept="image/*" capture="environment" className="hidden" onChange={async (e) => {
+                                        <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
                                             const file = e.target.files?.[0]
                                             if (!file) return
                                             // Compress image client-side
