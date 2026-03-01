@@ -11,14 +11,14 @@ export default function Home() {
     const [comment, setComment] = useState('')
 
     const [exchangeRate, setExchangeRate] = useState(13.5)
-    const [commission, setCommission] = useState(1500)
+    const [commissionPercent, setCommissionPercent] = useState(10)
     const [isSubmitting, setIsSubmitting] = useState(false)
 
     useEffect(() => {
         api.get('/settings')
             .then(res => {
                 setExchangeRate(res.data.exchange_rate)
-                setCommission(res.data.commission)
+                setCommissionPercent(res.data.commission_percent)
             })
             .catch(err => {
                 console.error("Failed to load settings", err)
@@ -28,8 +28,10 @@ export default function Home() {
     const finalPrice = useMemo(() => {
         const price = parseFloat(yuanPrice)
         if (isNaN(price) || price <= 0) return 0
-        return Math.ceil((price * exchangeRate) + commission)
-    }, [yuanPrice, exchangeRate, commission])
+        const baseRubles = price * exchangeRate
+        const commission = baseRubles * (commissionPercent / 100)
+        return Math.ceil(baseRubles + commission)
+    }, [yuanPrice, exchangeRate, commissionPercent])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -81,7 +83,7 @@ export default function Home() {
 
     return (
         <>
-            {/* Calculator Section */}
+            {/* Calculator */}
             <div className="glass-panel p-6 stagger-1 relative overflow-hidden group">
                 <div className="absolute -right-10 -top-10 w-32 h-32 bg-brand-cyan/20 blur-3xl rounded-full" />
                 <div className="flex items-center gap-3 mb-6">
@@ -108,7 +110,13 @@ export default function Home() {
                         <span className="absolute right-4 top-[38px] text-zinc-500 font-bold">¥</span>
                     </div>
 
-                    <div className="mt-2 p-5 bg-zinc-950/80 rounded-2xl border border-white/5 flex items-center justify-between">
+                    {/* Rate info */}
+                    <div className="flex justify-between text-[10px] text-zinc-500 px-1">
+                        <span>Курс: {exchangeRate.toFixed(2)} ₽/¥</span>
+                        <span>Комиссия: {commissionPercent}%</span>
+                    </div>
+
+                    <div className="p-5 bg-zinc-950/80 rounded-2xl border border-white/5 flex items-center justify-between">
                         <span className="text-sm text-zinc-400 font-medium">Итого:</span>
                         <div className="flex items-baseline gap-1">
                             <span className="text-3xl font-display font-bold text-white">
@@ -120,7 +128,7 @@ export default function Home() {
                 </div>
             </div>
 
-            {/* Order Form Section */}
+            {/* Order Form */}
             <div className="glass-panel p-6 stagger-2">
                 <div className="flex items-center gap-3 mb-6">
                     <div className="p-3 bg-brand-purple/10 rounded-2xl">

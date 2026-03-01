@@ -44,15 +44,10 @@ class OrderResponse(OrderBase):
     class Config:
         from_attributes = True
 
-class SettingsBase(BaseModel):
+class SettingsUpdate(BaseModel):
     exchange_rate: float
-    commission: float
-
-class SettingsResponse(SettingsBase):
-    pass
-
-class SettingsUpdate(SettingsBase):
-    pass
+    commission_percent: float
+    use_cbr_rate: bool = False
 
 class OrderStatusUpdate(BaseModel):
     status: str

@@ -4,16 +4,20 @@ from typing import List
 from api import models, schemas
 from api.database import get_db
 from api.notifier import notify_new_order, notify_status_change
+import logging
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
-@router.post("/", response_model=schemas.OrderResponse, status_code=201)
+@router.post("", response_model=schemas.OrderResponse, status_code=201)
 def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
-    # Calculate price internally to prevent client spoofing
     settings = db.query(models.Settings).first()
     if not settings:
-        settings = models.Settings(exchange_rate=13.5, commission=1500.0)
-        
+        settings = models.Settings(exchange_rate=13.5, commission_percent=10.0, use_cbr_rate=False)
+        db.add(settings)
+        db.commit()
+        db.refresh(settings)
+
     # Get or create user
     user = db.query(models.User).filter(models.User.telegram_id == order.user_telegram_id).first()
     if not user:
@@ -27,16 +31,20 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(user)
     else:
-        # Update details if changed
         user.fullname = order.fullname
         user.phone = order.phone or user.phone
         user.delivery_address = order.delivery_address or user.delivery_address
         db.commit()
 
     # Calculate total
+    rate = settings.exchange_rate
     total_rubles = 0
     for item in order.items:
-        total_rubles += (item.price_yuan * item.quantity * settings.exchange_rate) + settings.commission
+        item_rubles = item.price_yuan * item.quantity * rate
+        commission_amount = item_rubles * (settings.commission_percent / 100)
+        total_rubles += item_rubles + commission_amount
+
+    total_rubles = round(total_rubles)
 
     # Create Order
     db_order = models.Order(
@@ -65,11 +73,11 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
             "size": item.size,
             "price_yuan": item.price_yuan,
         })
-    
+
     db.commit()
     db.refresh(db_order)
-    
-    # Send Telegram notification to managers
+
+    # Send Telegram notification
     try:
         notify_new_order(
             order_id=db_order.id,
@@ -79,13 +87,11 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
             user_telegram_id=order.user_telegram_id,
         )
     except Exception as e:
-        # Don't fail the order if notification fails
-        import logging
-        logging.error(f"Notification failed: {e}")
+        logger.error(f"Notification failed: {e}")
 
     return db_order
 
-@router.get("/", response_model=List[schemas.OrderResponse])
+@router.get("", response_model=List[schemas.OrderResponse])
 def get_orders(telegram_id: str = None, db: Session = Depends(get_db)):
     query = db.query(models.Order)
     if telegram_id:
@@ -93,7 +99,7 @@ def get_orders(telegram_id: str = None, db: Session = Depends(get_db)):
         if not user:
             return []
         query = query.filter(models.Order.user_id == user.id)
-        
+
     return query.order_by(models.Order.created_at.desc()).all()
 
 @router.patch("/{order_id}/status", response_model=schemas.OrderResponse)
@@ -101,16 +107,15 @@ def update_order_status(order_id: int, status_update: schemas.OrderStatusUpdate,
     valid_statuses = ['New', 'Awaiting Payment', 'Purchased', 'At China Warehouse', 'Sent to RF (Russia)', 'Received']
     if status_update.status not in valid_statuses:
         raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
-    
+
     order = db.query(models.Order).filter(models.Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-    
+
     order.status = status_update.status
     db.commit()
     db.refresh(order)
-    
-    # Notify the client about the status change
+
     try:
         user = db.query(models.User).filter(models.User.id == order.user_id).first()
         if user and user.telegram_id:
@@ -120,7 +125,6 @@ def update_order_status(order_id: int, status_update: schemas.OrderStatusUpdate,
                 new_status=status_update.status,
             )
     except Exception as e:
-        import logging
-        logging.error(f"Status notification failed: {e}")
-    
+        logger.error(f"Status notification failed: {e}")
+
     return order

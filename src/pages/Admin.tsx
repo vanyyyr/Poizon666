@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { api } from '../api'
-import { Settings2, Save, Users, TrendingUp, PackageSearch, ChevronDown, Lock } from 'lucide-react'
+import { Settings2, Save, Users, TrendingUp, PackageSearch, ChevronDown, Lock, RefreshCw } from 'lucide-react'
 import toast from 'react-hot-toast'
 import WebApp from '@twa-dev/sdk'
 
@@ -52,19 +52,17 @@ export default function Admin() {
     const [isAuthenticated, setIsAuthenticated] = useState(false)
     const [passwordInput, setPasswordInput] = useState('')
     const [exchangeRate, setExchangeRate] = useState(0)
-    const [commission, setCommission] = useState(0)
+    const [commissionPercent, setCommissionPercent] = useState(10)
+    const [useCbrRate, setUseCbrRate] = useState(false)
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [orders, setOrders] = useState<Order[]>([])
     const [ordersLoading, setOrdersLoading] = useState(true)
     const [orderCount, setOrderCount] = useState(0)
 
-    // Check if already authenticated from session
     useEffect(() => {
         const saved = sessionStorage.getItem('poizon_admin')
-        if (saved === 'true') {
-            setIsAuthenticated(true)
-        }
+        if (saved === 'true') setIsAuthenticated(true)
     }, [])
 
     useEffect(() => {
@@ -73,7 +71,8 @@ export default function Admin() {
         api.get('/settings')
             .then(res => {
                 setExchangeRate(res.data.exchange_rate)
-                setCommission(res.data.commission)
+                setCommissionPercent(res.data.commission_percent)
+                setUseCbrRate(res.data.use_cbr_rate)
                 setLoading(false)
             })
             .catch(err => {
@@ -99,14 +98,10 @@ export default function Admin() {
             setIsAuthenticated(true)
             sessionStorage.setItem('poizon_admin', 'true')
             toast.success('Доступ разрешён')
-            if ((window as any).Telegram?.WebApp) {
-                WebApp.HapticFeedback.notificationOccurred('success')
-            }
+            if ((window as any).Telegram?.WebApp) WebApp.HapticFeedback.notificationOccurred('success')
         } else {
             toast.error('Неверный пароль')
-            if ((window as any).Telegram?.WebApp) {
-                WebApp.HapticFeedback.notificationOccurred('error')
-            }
+            if ((window as any).Telegram?.WebApp) WebApp.HapticFeedback.notificationOccurred('error')
         }
     }
 
@@ -114,12 +109,18 @@ export default function Admin() {
         e.preventDefault()
         setSaving(true)
         try {
-            await api.put('/settings', { exchange_rate: exchangeRate, commission: commission })
+            const res = await api.put('/settings', {
+                exchange_rate: exchangeRate,
+                commission_percent: commissionPercent,
+                use_cbr_rate: useCbrRate,
+            })
+            setExchangeRate(res.data.exchange_rate)
+            setCommissionPercent(res.data.commission_percent)
+            setUseCbrRate(res.data.use_cbr_rate)
             toast.success('Настройки сохранены!')
-            if ((window as any).Telegram?.WebApp) {
-                WebApp.HapticFeedback.notificationOccurred('success')
-            }
+            if ((window as any).Telegram?.WebApp) WebApp.HapticFeedback.notificationOccurred('success')
         } catch (err) {
+            console.error('Save error:', err)
             toast.error('Ошибка сохранения настроек')
         } finally {
             setSaving(false)
@@ -130,10 +131,8 @@ export default function Admin() {
         try {
             await api.patch(`/orders/${orderId}/status`, { status: newStatus })
             setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o))
-            toast.success(`Статус заказа #${orderId} обновлён`)
-            if ((window as any).Telegram?.WebApp) {
-                WebApp.HapticFeedback.notificationOccurred('success')
-            }
+            toast.success(`Статус #${orderId} обновлён`)
+            if ((window as any).Telegram?.WebApp) WebApp.HapticFeedback.notificationOccurred('success')
         } catch (err) {
             toast.error('Ошибка обновления статуса')
         }
@@ -160,10 +159,7 @@ export default function Admin() {
                             onChange={e => setPasswordInput(e.target.value)}
                             autoFocus
                         />
-                        <button
-                            type="submit"
-                            className="btn-primary flex items-center justify-center gap-2"
-                        >
+                        <button type="submit" className="btn-primary flex items-center justify-center gap-2">
                             <Lock className="w-4 h-4" /> Войти
                         </button>
                     </form>
@@ -172,7 +168,6 @@ export default function Admin() {
         )
     }
 
-    // --- Admin Panel ---
     if (loading) {
         return <div className="text-center text-zinc-500 mt-10 animate-pulse">Загрузка панели...</div>
     }
@@ -196,7 +191,7 @@ export default function Admin() {
                 </div>
             </div>
 
-            {/* Global Settings */}
+            {/* Settings */}
             <div className="glass-panel p-6">
                 <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
                     <div className="p-2 bg-yellow-500/10 rounded-xl">
@@ -205,55 +200,82 @@ export default function Admin() {
                     <h2 className="text-lg font-bold text-white">Настройки цен</h2>
                 </div>
 
-                <form onSubmit={handleSave} className="flex flex-col gap-4">
+                <form onSubmit={handleSave} className="flex flex-col gap-5">
+                    {/* Rate source toggle */}
+                    <div className="flex gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setUseCbrRate(false)}
+                            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold border transition-all ${!useCbrRate
+                                ? 'bg-brand-cyan/20 text-brand-cyan border-brand-cyan/30'
+                                : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-600'
+                                }`}
+                        >
+                            Ручной курс
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setUseCbrRate(true)}
+                            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${useCbrRate
+                                ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                                : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-600'
+                                }`}
+                        >
+                            <RefreshCw className="w-3 h-3" /> Курс ЦБ РФ
+                        </button>
+                    </div>
+
+                    {/* Exchange rate */}
                     <div>
                         <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2 block">
-                            Курс юаня (¥ → ₽)
+                            {useCbrRate ? 'Текущий курс ЦБ (авто)' : 'Курс юаня (¥ → ₽)'}
                         </label>
                         <div className="relative">
                             <input
                                 type="number"
-                                step="0.1"
-                                className="glass-input text-lg font-bold pr-10"
+                                step="0.01"
+                                className={`glass-input text-lg font-bold pr-10 ${useCbrRate ? 'opacity-60' : ''}`}
                                 value={exchangeRate}
                                 onChange={e => setExchangeRate(parseFloat(e.target.value))}
+                                disabled={useCbrRate}
                                 required
                             />
                             <span className="absolute right-4 top-[14px] text-zinc-500 font-bold">₽</span>
                         </div>
+                        {useCbrRate && (
+                            <p className="text-[10px] text-green-400/60 mt-1">🔄 Обновляется автоматически с сайта ЦБ РФ</p>
+                        )}
                     </div>
 
+                    {/* Commission */}
                     <div>
                         <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2 block">
-                            Фиксированная комиссия (₽)
+                            Комиссия (%)
                         </label>
                         <div className="relative">
                             <input
                                 type="number"
+                                step="0.5"
                                 className="glass-input text-lg font-bold pr-10"
-                                value={commission}
-                                onChange={e => setCommission(parseFloat(e.target.value))}
+                                value={commissionPercent}
+                                onChange={e => setCommissionPercent(parseFloat(e.target.value))}
                                 required
                             />
-                            <span className="absolute right-4 top-[14px] text-zinc-500 font-bold">₽</span>
+                            <span className="absolute right-4 top-[14px] text-zinc-500 font-bold">%</span>
                         </div>
                     </div>
 
                     <button
                         type="submit"
                         disabled={saving}
-                        className="mt-4 relative overflow-hidden rounded-2xl px-6 py-3 font-bold text-black shadow-lg transition-transform hover:scale-[1.02] active:scale-95 bg-white flex justify-center items-center gap-2"
+                        className="mt-2 relative overflow-hidden rounded-2xl px-6 py-3 font-bold text-black shadow-lg transition-transform hover:scale-[1.02] active:scale-95 bg-white flex justify-center items-center gap-2"
                     >
-                        {saving ? 'Сохранение...' : (
-                            <>
-                                <Save className="w-4 h-4" /> Сохранить
-                            </>
-                        )}
+                        {saving ? 'Сохранение...' : (<><Save className="w-4 h-4" /> Сохранить</>)}
                     </button>
                 </form>
             </div>
 
-            {/* Orders Management */}
+            {/* Orders */}
             <div className="glass-panel p-6">
                 <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
                     <div className="p-2 bg-brand-purple/10 rounded-xl">
@@ -314,7 +336,7 @@ export default function Admin() {
             </div>
 
             <p className="text-center text-[10px] text-zinc-600 px-4">
-                Изменения курса применяются мгновенно для всех пользователей.
+                Изменения применяются мгновенно для всех пользователей.
             </p>
         </div>
     )

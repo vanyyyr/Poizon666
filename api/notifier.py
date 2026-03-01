@@ -4,13 +4,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8484976479:AAH-gB39CO4ABKxx0KUkFViNmCFZnox0GwA")
-MANAGER_CHAT_ID = os.getenv("MANAGER_CHAT_ID", "")
+MANAGER_CHAT_ID = os.getenv("MANAGER_CHAT_ID", "709766413")
 
 TELEGRAM_API = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
 
 def send_telegram_message(chat_id: str, text: str, parse_mode: str = "HTML"):
-    """Send a message via Telegram Bot API using urllib (no extra dependencies)."""
+    """Send a message via Telegram Bot API using urllib."""
     if not chat_id:
         logger.warning("No chat_id provided, skipping Telegram notification")
         return
