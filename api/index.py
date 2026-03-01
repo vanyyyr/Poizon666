@@ -100,3 +100,36 @@ def db_test():
             result["settings_error"] = str(e)
     
     return result
+
+
+@app.get("/api/stats")
+def get_stats():
+    """Get dynamic stats: channel subscribers + unique users."""
+    import urllib.request
+    import json
+    from api.notifier import BOT_TOKEN
+
+    stats = {"subscribers": 0, "unique_users": 0}
+
+    # Fetch channel subscriber count from Telegram API
+    try:
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMemberCount?chat_id=@poizon666_channel"
+        req = urllib.request.Request(url)
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read())
+            if data.get("ok"):
+                stats["subscribers"] = data["result"]
+    except Exception:
+        pass
+
+    # Count unique users from database
+    try:
+        from api.database import engine
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            row = conn.execute(text("SELECT COUNT(*) FROM users")).scalar()
+            stats["unique_users"] = row or 0
+    except Exception:
+        pass
+
+    return stats

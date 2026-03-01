@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react'
 import { api } from '../api'
 import { Settings2, Save, Users, TrendingUp, PackageSearch, ChevronDown, Lock, RefreshCw, Send, Megaphone, Trash2, Edit3, X, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
-import WebApp from '@twa-dev/sdk'
 
 const ADMIN_PASSWORD = 'qwerty'
 
@@ -61,6 +60,8 @@ export default function Admin() {
     const [broadcasting, setBroadcasting] = useState(false)
     const [editingOrder, setEditingOrder] = useState<number | null>(null)
     const [editForm, setEditForm] = useState({ track_rf: '', track_china: '', weight: '', delivery_cost: '' })
+    const [subscribers, setSubscribers] = useState(0)
+    const [uniqueUsers, setUniqueUsers] = useState(0)
 
     useEffect(() => {
         const saved = sessionStorage.getItem('poizon_admin')
@@ -76,6 +77,11 @@ export default function Admin() {
             setLoading(false)
         }).catch(() => setLoading(false))
         loadOrders()
+        // Fetch dynamic stats
+        api.get('/stats').then(res => {
+            setSubscribers(res.data.subscribers || 0)
+            setUniqueUsers(res.data.unique_users || 0)
+        }).catch(() => { })
     }, [isAuthenticated])
 
     const loadOrders = () => {
@@ -175,18 +181,24 @@ export default function Admin() {
         <div className="w-full flex flex-col gap-6 stagger-1">
 
             {/* Stats */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-3">
                 <div className="glass-panel p-4 flex flex-col items-center justify-center relative overflow-hidden">
                     <div className="absolute -top-4 -right-4 w-16 h-16 bg-brand-cyan/20 blur-xl rounded-full" />
-                    <Users className="w-6 h-6 text-brand-cyan mb-2" />
-                    <span className="text-2xl font-bold font-display">8.3k</span>
-                    <span className="text-[10px] text-zinc-400 font-medium uppercase tracking-wider">Подписчиков</span>
+                    <Users className="w-5 h-5 text-brand-cyan mb-1" />
+                    <span className="text-xl font-bold font-display">{subscribers > 0 ? (subscribers >= 1000 ? `${(subscribers / 1000).toFixed(1)}k` : subscribers) : '—'}</span>
+                    <span className="text-[9px] text-zinc-400 font-medium uppercase tracking-wider">Подписчиков</span>
+                </div>
+                <div className="glass-panel p-4 flex flex-col items-center justify-center relative overflow-hidden">
+                    <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-green-500/20 blur-xl rounded-full" />
+                    <Users className="w-5 h-5 text-green-400 mb-1" />
+                    <span className="text-xl font-bold font-display">{uniqueUsers || '—'}</span>
+                    <span className="text-[9px] text-zinc-400 font-medium uppercase tracking-wider">Юзеров</span>
                 </div>
                 <div className="glass-panel p-4 flex flex-col items-center justify-center relative overflow-hidden">
                     <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-brand-purple/20 blur-xl rounded-full" />
-                    <TrendingUp className="w-6 h-6 text-brand-purple mb-2" />
-                    <span className="text-2xl font-bold font-display">{orders.length}</span>
-                    <span className="text-[10px] text-zinc-400 font-medium uppercase tracking-wider">Заказов</span>
+                    <TrendingUp className="w-5 h-5 text-brand-purple mb-1" />
+                    <span className="text-xl font-bold font-display">{orders.length}</span>
+                    <span className="text-[9px] text-zinc-400 font-medium uppercase tracking-wider">Заказов</span>
                 </div>
             </div>
 

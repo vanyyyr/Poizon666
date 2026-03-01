@@ -11,6 +11,7 @@ interface CartItem {
     size: string;
     priceYuan: string;
     comment: string;
+    imageUrl: string;
 }
 
 const COMMISSION_OPTIONS = [
@@ -24,12 +25,12 @@ let nextId = 1
 export default function Home() {
     const lang = useLang()
     const [commissionType, setCommissionType] = useState('insurance')
-    const [exchangeRate, setExchangeRate] = useState(13.5)
+    const [exchangeRate, setExchangeRate] = useState(0)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [supportUsername, setSupportUsername] = useState('s1pport')
     const [deliveryType, setDeliveryType] = useState<'address' | 'pickup_msk' | 'pickup_spb'>('address')
     const [cart, setCart] = useState<CartItem[]>([
-        { id: nextId++, productLink: '', size: '', priceYuan: '', comment: '' }
+        { id: nextId++, productLink: '', size: '', priceYuan: '', comment: '', imageUrl: '' }
     ])
     const formRef = useRef<HTMLFormElement>(null)
 
@@ -39,7 +40,7 @@ export default function Home() {
                 setExchangeRate(res.data.exchange_rate)
                 if (res.data.support_username) setSupportUsername(res.data.support_username)
             })
-            .catch(err => console.error("Failed to load settings", err))
+            .catch(() => { setExchangeRate(13.5) })
     }, [])
 
     // Auto-scroll when input focused
@@ -66,7 +67,7 @@ export default function Home() {
         return { itemTotals: totals, grandTotal: Math.ceil(grand), totalYuan: yuan }
     }, [cart, exchangeRate, commissionRate])
 
-    const addItem = () => setCart(prev => [...prev, { id: nextId++, productLink: '', size: '', priceYuan: '', comment: '' }])
+    const addItem = () => setCart(prev => [...prev, { id: nextId++, productLink: '', size: '', priceYuan: '', comment: '', imageUrl: '' }])
     const removeItem = (id: number) => { if (cart.length > 1) setCart(prev => prev.filter(item => item.id !== id)) }
     const updateItem = (id: number, field: keyof CartItem, value: string) => setCart(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item))
 
@@ -97,10 +98,11 @@ export default function Home() {
                     size: item.size,
                     price_yuan: parseFloat(item.priceYuan),
                     comment: item.comment || null,
+                    image_url: item.imageUrl || null,
                 }))
             })
             toast.success(t('order.success', lang))
-            setCart([{ id: nextId++, productLink: '', size: '', priceYuan: '', comment: '' }])
+            setCart([{ id: nextId++, productLink: '', size: '', priceYuan: '', comment: '', imageUrl: '' }])
             if ((window as any).Telegram?.WebApp) WebApp.HapticFeedback.notificationOccurred('success')
         } catch (error) {
             console.error(error)
@@ -117,7 +119,6 @@ export default function Home() {
                     <div className="p-3 bg-brand-cyan/10 rounded-2xl"><CalcIcon className="text-brand-cyan w-6 h-6" /></div>
                     <div>
                         <h2 className="text-xl font-bold">{t('calc.title', lang)}</h2>
-                        <p className="text-xs text-zinc-400">{t('calc.rate', lang)}: {exchangeRate.toFixed(2)} ₽/¥</p>
                     </div>
                 </div>
 
@@ -190,6 +191,15 @@ export default function Home() {
                             <div>
                                 <label className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1 block">{t('order.comment', lang)}</label>
                                 <input type="text" className="glass-input text-sm" placeholder={t('order.comment_placeholder', lang)} value={item.comment} onChange={e => updateItem(item.id, 'comment', e.target.value)} onFocus={handleFocus} />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1 block">📷 {t('order.image', lang)}</label>
+                                <input type="text" className="glass-input text-xs" placeholder={t('order.image_placeholder', lang)} value={item.imageUrl} onChange={e => updateItem(item.id, 'imageUrl', e.target.value)} onFocus={handleFocus} />
+                                {item.imageUrl && (
+                                    <div className="mt-2 rounded-xl overflow-hidden border border-white/5 max-h-32">
+                                        <img src={item.imageUrl} alt="" className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))}

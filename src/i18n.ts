@@ -38,6 +38,8 @@ const translations: Record<string, Record<Lang, string>> = {
     'order.success': { ru: 'Заявка отправлена!', en: 'Order submitted!', zh: '订单已提交！' },
     'order.error': { ru: 'Ошибка при отправке заявки', en: 'Error submitting order', zh: '提交订单出错' },
     'order.add_item_error': { ru: 'Добавьте хотя бы один товар', en: 'Add at least one item', zh: '请至少添加一件商品' },
+    'order.image': { ru: 'Фото товара (ссылка)', en: 'Product photo (URL)', zh: '商品图片（链接）' },
+    'order.image_placeholder': { ru: 'Вставьте ссылку на фото товара', en: 'Paste product photo URL', zh: '粘贴商品图片链接' },
 
     // Delivery
     'delivery.title': { ru: 'Доставка', en: 'Delivery', zh: '配送' },
