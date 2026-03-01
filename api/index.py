@@ -1,9 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .database import engine, Base
-from .routers import orders, settings
+from api.database import engine, Base
+from api.routers import orders, settings
 
-# Create database tables
+# Validate connection and create tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Poizon666 App API")
