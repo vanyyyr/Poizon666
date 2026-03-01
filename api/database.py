@@ -7,7 +7,7 @@ from urllib.parse import quote_plus
 DB_USER = os.getenv("DB_USER", "postgres")
 DB_PASS = os.getenv("DB_PASS", "06112004RatII@")
 DB_HOST = os.getenv("DB_HOST", "db.xjfrvfxuzijvuszpwfhd.supabase.co")
-DB_PORT = os.getenv("DB_PORT", "6543")  # Supabase connection pooler (PgBouncer)
+DB_PORT = os.getenv("DB_PORT", "5432")
 DB_NAME = os.getenv("DB_NAME", "postgres")
 
 # URL-encode the password to handle special characters like @
@@ -20,8 +20,8 @@ engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,
     pool_recycle=60,
-    pool_size=2,
-    max_overflow=3,
+    pool_size=1,
+    max_overflow=2,
     connect_args={"connect_timeout": 10},
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
