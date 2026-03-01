@@ -4,7 +4,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Poizon666 App API")
+app = FastAPI(title="Poizon666 App API", redirect_slashes=False)
 
 # Configure CORS
 app.add_middleware(
@@ -15,7 +15,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Lazy table creation — only when DB is actually needed
+# Lazy table creation
 _tables_created = False
 
 def ensure_tables():

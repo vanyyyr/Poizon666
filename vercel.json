@@ -1,11 +1,11 @@
 {
     "rewrites": [
         {
-            "source": "/api/:path*",
+            "source": "/api/(.*)",
             "destination": "/api/index.py"
         },
         {
-            "source": "/((?!assets/).*)",
+            "source": "/(.*)",
             "destination": "/index.html"
         }
     ]
