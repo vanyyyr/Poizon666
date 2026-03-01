@@ -1,21 +1,14 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
-from sqlalchemy.pool import StaticPool
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Use SQLite for local development by default, or connect to Postgres if URL is provided
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./poizon_app.db")
+# Use Supabase URL from environment, or default to the provided one (in production, set this in Vercel Env Vars!)
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:06112004RatII@@db.xjfrvfxuzijvuszpwfhd.supabase.co:5432/postgres")
 
-if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
-    engine = create_engine(
-        SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}, poolclass=StaticPool
-    )
-else:
-    engine = create_engine(SQLALCHEMY_DATABASE_URL)
-
+engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()

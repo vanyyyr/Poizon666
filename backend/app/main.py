@@ -3,23 +3,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from .database import engine, Base
 from .routers import orders, settings
 
-# Create database tables (For production use Alembic)
+# Create database tables
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Poizon666 Mini App API")
+app = FastAPI(title="Poizon666 App API")
 
-# Configure CORS for Telegram Web Apps and Frontend URL
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In production, restrict to frontend deployment URL
+    allow_origins=["*"], # Allow all for Vercel deployment preview/production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(orders.router, prefix="/api/orders", tags=["Orders"])
-app.include_router(settings.router, prefix="/api/settings", tags=["Settings"])
+app.include_router(orders.router, prefix="/api")
+app.include_router(settings.router, prefix="/api")
 
 @app.get("/api/health")
 def health_check():
-    return {"status": "ok"}
+    return {"status": "ok", "message": "Backend is running fine!"}
