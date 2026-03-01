@@ -53,3 +53,6 @@ class SettingsResponse(SettingsBase):
 
 class SettingsUpdate(SettingsBase):
     pass
+
+class OrderStatusUpdate(BaseModel):
+    status: str

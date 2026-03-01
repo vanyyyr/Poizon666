@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { PackageSearch, Clock, MapPin, Truck, CheckCircle, HelpCircle } from 'lucide-react'
 import WebApp from '@twa-dev/sdk'
@@ -18,7 +18,7 @@ interface Order {
 }
 
 const statusConfig: Record<string, { color: string; icon: React.ElementType; label: string }> = {
-    'New': { color: 'text-yellow-500', icon: Clock, label: 'Новый заказ' },
+    'New': { color: 'text-yellow-500', icon: Clock, label: 'Новый' },
     'Awaiting Payment': { color: 'text-orange-500', icon: Clock, label: 'Ожидает оплаты' },
     'Purchased': { color: 'text-brand-purple', icon: CheckCircle, label: 'Выкуплен' },
     'At China Warehouse': { color: 'text-blue-500', icon: MapPin, label: 'На складе в Китае' },
@@ -46,7 +46,7 @@ export default function Orders() {
     }, [])
 
     if (loading) {
-        return <div className="text-center text-zinc-500 mt-10 animate-pulse">Loading orders...</div>
+        return <div className="text-center text-zinc-500 mt-10 animate-pulse">Загрузка заказов...</div>
     }
 
     return (
@@ -54,17 +54,18 @@ export default function Orders() {
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold flex items-center gap-2">
                     <PackageSearch className="w-5 h-5 text-brand-purple" />
-                    My Orders
+                    Мои заказы
                 </h2>
                 <span className="text-xs text-zinc-500 font-medium bg-zinc-900 px-3 py-1 rounded-full">
-                    {orders.length} Total
+                    {orders.length} всего
                 </span>
             </div>
 
             {orders.length === 0 ? (
                 <div className="glass-panel p-8 text-center flex flex-col items-center justify-center opacity-80">
                     <PackageSearch className="w-12 h-12 text-zinc-700 mb-3" />
-                    <p className="text-zinc-400 font-medium">You have no orders yet.</p>
+                    <p className="text-zinc-400 font-medium">У вас пока нет заказов.</p>
+                    <p className="text-xs text-zinc-600 mt-1">Перейдите в калькулятор, чтобы оформить первый!</p>
                 </div>
             ) : (
                 orders.map((order) => {
@@ -85,7 +86,7 @@ export default function Orders() {
                                 </div>
                                 <div className="text-right">
                                     <div className="font-display font-bold text-lg">{order.total_price_rubles.toLocaleString('ru-RU')} ₽</div>
-                                    <div className="text-[10px] text-zinc-500">{new Date(order.created_at).toLocaleDateString()}</div>
+                                    <div className="text-[10px] text-zinc-500">{new Date(order.created_at).toLocaleDateString('ru-RU')}</div>
                                 </div>
                             </div>
 
@@ -96,7 +97,7 @@ export default function Orders() {
                                             {item.product_link}
                                         </span>
                                         <span className="font-medium text-white text-xs bg-zinc-800 px-2 py-0.5 rounded-lg">
-                                            Size: {item.size}
+                                            {item.size}
                                         </span>
                                     </div>
                                 ))}

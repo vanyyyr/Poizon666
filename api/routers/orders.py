@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from api import models, schemas
 from api.database import get_db
+from api.notifier import notify_new_order, notify_status_change
 
 router = APIRouter()
 
@@ -32,7 +33,7 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
         user.delivery_address = order.delivery_address or user.delivery_address
         db.commit()
 
-    # Calculate total elements
+    # Calculate total
     total_rubles = 0
     for item in order.items:
         total_rubles += (item.price_yuan * item.quantity * settings.exchange_rate) + settings.commission
@@ -47,6 +48,7 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
     db.refresh(db_order)
 
     # Create Items
+    items_data = []
     for item in order.items:
         db_item = models.OrderItem(
             order_id=db_order.id,
@@ -58,16 +60,33 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
             comment=item.comment
         )
         db.add(db_item)
+        items_data.append({
+            "product_link": item.product_link,
+            "size": item.size,
+            "price_yuan": item.price_yuan,
+        })
     
     db.commit()
     db.refresh(db_order)
     
-    # TODO: Implement Aiogram bot notification to Manager Group here
+    # Send Telegram notification to managers
+    try:
+        notify_new_order(
+            order_id=db_order.id,
+            total_rubles=total_rubles,
+            items=items_data,
+            user_fullname=order.fullname,
+            user_telegram_id=order.user_telegram_id,
+        )
+    except Exception as e:
+        # Don't fail the order if notification fails
+        import logging
+        logging.error(f"Notification failed: {e}")
+
     return db_order
 
 @router.get("/", response_model=List[schemas.OrderResponse])
 def get_orders(telegram_id: str = None, db: Session = Depends(get_db)):
-    # Note: Protect this route in production. If telegram_id is provided, filter. If admin, return all.
     query = db.query(models.Order)
     if telegram_id:
         user = db.query(models.User).filter(models.User.telegram_id == telegram_id).first()
@@ -76,3 +95,32 @@ def get_orders(telegram_id: str = None, db: Session = Depends(get_db)):
         query = query.filter(models.Order.user_id == user.id)
         
     return query.order_by(models.Order.created_at.desc()).all()
+
+@router.patch("/{order_id}/status", response_model=schemas.OrderResponse)
+def update_order_status(order_id: int, status_update: schemas.OrderStatusUpdate, db: Session = Depends(get_db)):
+    valid_statuses = ['New', 'Awaiting Payment', 'Purchased', 'At China Warehouse', 'Sent to RF (Russia)', 'Received']
+    if status_update.status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
+    
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    order.status = status_update.status
+    db.commit()
+    db.refresh(order)
+    
+    # Notify the client about the status change
+    try:
+        user = db.query(models.User).filter(models.User.id == order.user_id).first()
+        if user and user.telegram_id:
+            notify_status_change(
+                user_telegram_id=user.telegram_id,
+                order_id=order.id,
+                new_status=status_update.status,
+            )
+    except Exception as e:
+        import logging
+        logging.error(f"Status notification failed: {e}")
+    
+    return order
