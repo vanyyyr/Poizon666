@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Calculator as CalcIcon, ShoppingBag, ArrowRight, Plus, Trash2, Shield, Zap, Package } from 'lucide-react'
+import { Calculator as CalcIcon, ShoppingBag, ArrowRight, Plus, Trash2, Shield, Zap, Package, Headphones } from 'lucide-react'
 import { api } from '../api'
 import toast from 'react-hot-toast'
 import WebApp from '@twa-dev/sdk'
@@ -13,9 +13,9 @@ interface CartItem {
 }
 
 const COMMISSION_OPTIONS = [
-    { key: 'insurance', label: 'Со страховкой', rate: 10, icon: Shield, color: 'brand-cyan' },
-    { key: 'no_insurance', label: 'Без страховки', rate: 7, icon: Zap, color: 'yellow-400' },
-    { key: 'wholesale', label: 'Опт (от 8000¥)', rate: 5, icon: Package, color: 'green-400' },
+    { key: 'insurance', label: 'Со страховкой', rate: 10, icon: Shield, activeColor: '#00f2fe', activeBg: 'rgba(0,242,254,0.15)', activeBorder: 'rgba(0,242,254,0.3)' },
+    { key: 'no_insurance', label: 'Без страховки', rate: 7, icon: Zap, activeColor: '#facc15', activeBg: 'rgba(250,204,21,0.15)', activeBorder: 'rgba(250,204,21,0.3)' },
+    { key: 'wholesale', label: 'Опт (от 8000¥)', rate: 5, icon: Package, activeColor: '#4ade80', activeBg: 'rgba(74,222,128,0.15)', activeBorder: 'rgba(74,222,128,0.3)' },
 ]
 
 let nextId = 1
@@ -24,13 +24,17 @@ export default function Home() {
     const [commissionType, setCommissionType] = useState('insurance')
     const [exchangeRate, setExchangeRate] = useState(13.5)
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [supportUsername, setSupportUsername] = useState('s1pport')
     const [cart, setCart] = useState<CartItem[]>([
         { id: nextId++, productLink: '', size: '', priceYuan: '', comment: '' }
     ])
 
     useEffect(() => {
         api.get('/settings')
-            .then(res => setExchangeRate(res.data.exchange_rate))
+            .then(res => {
+                setExchangeRate(res.data.exchange_rate)
+                if (res.data.support_username) setSupportUsername(res.data.support_username)
+            })
             .catch(err => console.error("Failed to load settings", err))
     }, [])
 
@@ -71,12 +75,10 @@ export default function Home() {
             toast.error('Добавьте хотя бы один товар')
             return
         }
-
         setIsSubmitting(true)
         try {
             const userData = WebApp.initDataUnsafe?.user
-
-            const payload = {
+            await api.post('/orders', {
                 total_price_rubles: grandTotal,
                 user_telegram_id: userData?.id?.toString() || "unknown",
                 fullname: userData?.first_name || "User",
@@ -88,15 +90,10 @@ export default function Home() {
                     price_yuan: parseFloat(item.priceYuan),
                     comment: item.comment || null,
                 }))
-            }
-
-            await api.post('/orders', payload)
+            })
             toast.success('Заявка отправлена!')
             setCart([{ id: nextId++, productLink: '', size: '', priceYuan: '', comment: '' }])
-
-            if ((window as any).Telegram?.WebApp) {
-                WebApp.HapticFeedback.notificationOccurred('success')
-            }
+            if ((window as any).Telegram?.WebApp) WebApp.HapticFeedback.notificationOccurred('success')
         } catch (error) {
             console.error(error)
             toast.error('Ошибка при отправке заявки')
@@ -120,7 +117,7 @@ export default function Home() {
                     </div>
                 </div>
 
-                {/* Commission selector */}
+                {/* Commission selector — using inline styles for colors */}
                 <div className="flex flex-col gap-2 mb-5">
                     <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Выберите комиссию</label>
                     <div className="grid grid-cols-3 gap-2">
@@ -132,15 +129,20 @@ export default function Home() {
                                     key={opt.key}
                                     type="button"
                                     onClick={() => setCommissionType(opt.key)}
-                                    className={`flex flex-col items-center gap-1 p-3 rounded-xl text-[10px] font-bold border transition-all ${active
-                                            ? `bg-${opt.color}/20 text-${opt.color} border-${opt.color}/30`
-                                            : 'bg-zinc-900 text-zinc-500 border-zinc-800'
-                                        }`}
-                                    style={active ? { backgroundColor: `var(--color-${opt.color}, rgba(255,255,255,0.1))` } : {}}
+                                    className="flex flex-col items-center gap-1 p-3 rounded-xl text-[10px] font-bold border transition-all"
+                                    style={active ? {
+                                        backgroundColor: opt.activeBg,
+                                        color: opt.activeColor,
+                                        borderColor: opt.activeBorder,
+                                    } : {
+                                        backgroundColor: 'rgba(24,24,27,0.8)',
+                                        color: '#71717a',
+                                        borderColor: 'rgba(39,39,42,1)',
+                                    }}
                                 >
                                     <Icon className="w-4 h-4" />
                                     <span>{opt.label}</span>
-                                    <span className={`text-sm font-display ${active ? '' : 'text-zinc-600'}`}>{opt.rate}%</span>
+                                    <span className="text-sm font-display">{opt.rate}%</span>
                                 </button>
                             )
                         })}
@@ -159,9 +161,7 @@ export default function Home() {
                         {totalYuan > 0 && <span className="text-[10px] text-zinc-600">{totalYuan.toFixed(0)}¥ × {exchangeRate.toFixed(2)} + {commissionRate}%</span>}
                     </div>
                     <div className="flex items-baseline gap-1">
-                        <span className="text-3xl font-display font-bold text-white">
-                            {grandTotal.toLocaleString('ru-RU')}
-                        </span>
+                        <span className="text-3xl font-display font-bold text-white">{grandTotal.toLocaleString('ru-RU')}</span>
                         <span className="text-brand-cyan font-bold">₽</span>
                     </div>
                 </div>
@@ -176,7 +176,7 @@ export default function Home() {
                         </div>
                         <div>
                             <h2 className="text-xl font-bold">Заказ</h2>
-                            <p className="text-xs text-zinc-400">{cart.length} {cart.length === 1 ? 'товар' : 'товара'}</p>
+                            <p className="text-xs text-zinc-400">{cart.length} {cart.length === 1 ? 'товар' : cart.length < 5 ? 'товара' : 'товаров'}</p>
                         </div>
                     </div>
                 </div>
@@ -194,72 +194,51 @@ export default function Home() {
                             )}
                             <div>
                                 <label className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1 block">Цена (¥)</label>
-                                <input
-                                    type="number"
-                                    inputMode="decimal"
-                                    className="glass-input text-lg font-bold"
-                                    placeholder="0"
-                                    value={item.priceYuan}
-                                    onChange={e => updateItem(item.id, 'priceYuan', e.target.value)}
-                                    required
-                                />
-                                {itemTotals[idx] > 0 && (
-                                    <p className="text-[10px] text-brand-cyan mt-1 text-right">≈ {itemTotals[idx].toLocaleString('ru-RU')} ₽</p>
-                                )}
+                                <input type="number" inputMode="decimal" className="glass-input text-lg font-bold" placeholder="0" value={item.priceYuan} onChange={e => updateItem(item.id, 'priceYuan', e.target.value)} required />
+                                {itemTotals[idx] > 0 && <p className="text-[10px] text-brand-cyan mt-1 text-right">≈ {itemTotals[idx].toLocaleString('ru-RU')} ₽</p>}
                             </div>
                             <div>
                                 <label className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1 block">Ссылка на товар</label>
-                                <textarea
-                                    className="glass-input min-h-[60px] resize-none text-xs"
-                                    placeholder="Вставьте ссылку с Poizon / 1688 / Taobao (любой формат)"
-                                    value={item.productLink}
-                                    onChange={e => updateItem(item.id, 'productLink', e.target.value)}
-                                    required
-                                />
+                                <textarea className="glass-input min-h-[60px] resize-none text-xs" placeholder="Вставьте ссылку с Poizon / 1688 / Taobao (любой формат)" value={item.productLink} onChange={e => updateItem(item.id, 'productLink', e.target.value)} required />
                             </div>
                             <div>
                                 <label className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1 block">Размер / Цвет</label>
-                                <input
-                                    type="text"
-                                    className="glass-input"
-                                    placeholder="42 EU, бело-серо-розовые"
-                                    value={item.size}
-                                    onChange={e => updateItem(item.id, 'size', e.target.value)}
-                                    required
-                                />
+                                <input type="text" className="glass-input" placeholder="42 EU, бело-серо-розовые" value={item.size} onChange={e => updateItem(item.id, 'size', e.target.value)} required />
                             </div>
                             <div>
                                 <label className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1 block">Комментарий</label>
-                                <input
-                                    type="text"
-                                    className="glass-input text-sm"
-                                    placeholder="Особые пожелания"
-                                    value={item.comment}
-                                    onChange={e => updateItem(item.id, 'comment', e.target.value)}
-                                />
+                                <input type="text" className="glass-input text-sm" placeholder="Особые пожелания" value={item.comment} onChange={e => updateItem(item.id, 'comment', e.target.value)} />
                             </div>
                         </div>
                     ))}
 
-                    {/* Add item button */}
-                    <button
-                        type="button"
-                        onClick={addItem}
-                        className="w-full py-3 rounded-2xl border border-dashed border-white/10 text-zinc-500 text-sm font-medium flex items-center justify-center gap-2 hover:border-brand-cyan/30 hover:text-brand-cyan transition-colors"
-                    >
+                    <button type="button" onClick={addItem} className="w-full py-3 rounded-2xl border border-dashed border-white/10 text-zinc-500 text-sm font-medium flex items-center justify-center gap-2 hover:border-brand-cyan/30 hover:text-brand-cyan transition-colors">
                         <Plus className="w-4 h-4" /> Добавить ещё товар
                     </button>
 
-                    <button
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="btn-primary mt-2 flex items-center justify-center gap-2 group"
-                    >
+                    <button type="submit" disabled={isSubmitting} className="btn-primary mt-2 flex items-center justify-center gap-2 group">
                         {isSubmitting ? 'Отправка...' : `Отправить заявку (${grandTotal.toLocaleString('ru-RU')} ₽)`}
                         {!isSubmitting && <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />}
                     </button>
                 </form>
             </div>
+
+            {/* Support button */}
+            <a
+                href={`https://t.me/${supportUsername}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="glass-panel p-4 flex items-center gap-3 stagger-3 hover:border-brand-purple/30 transition-colors"
+            >
+                <div className="p-2.5 bg-brand-purple/10 rounded-xl">
+                    <Headphones className="text-brand-purple w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                    <p className="text-sm font-bold text-white">Поддержка</p>
+                    <p className="text-[10px] text-zinc-500">@{supportUsername}</p>
+                </div>
+                <ArrowRight className="w-4 h-4 text-zinc-600" />
+            </a>
         </>
     )
 }

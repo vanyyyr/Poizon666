@@ -14,15 +14,9 @@ function App() {
   const [showSplash, setShowSplash] = useState(true)
 
   useEffect(() => {
-    // Initialize Telegram Web App
     WebApp.ready()
     WebApp.expand()
-
-    if (WebApp.colorScheme === 'dark') {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
+    document.documentElement.classList.add('dark')
   }, [])
 
   const handleSplashFinish = useCallback(() => {
@@ -43,13 +37,22 @@ function App() {
           <Route path="/admin" element={<Admin />} />
         </Routes>
       </Layout>
-      <Toaster position="top-center" toastOptions={{
-        style: {
-          background: '#18181b',
-          color: '#fff',
-          border: '1px solid rgba(255,255,255,0.1)'
-        }
-      }} />
+      <Toaster
+        position="top-center"
+        containerStyle={{
+          top: 'calc(env(safe-area-inset-top, 0px) + 16px)',
+        }}
+        toastOptions={{
+          style: {
+            background: '#18181b',
+            color: '#fff',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '16px',
+            fontSize: '14px',
+          },
+          duration: 3000,
+        }}
+      />
     </BrowserRouter>
   )
 }

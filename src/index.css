@@ -13,16 +13,6 @@
 }
 
 @layer base {
-  :root {
-    --bg-color: #ffffff;
-    --text-color: #09090b;
-  }
-
-  .dark {
-    --bg-color: #09090b;
-    --text-color: #ffffff;
-  }
-
   html {
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
@@ -30,9 +20,10 @@
     padding-right: env(safe-area-inset-right);
   }
 
+  /* Dark theme (default) */
   body {
-    background-color: var(--bg-color);
-    color: var(--text-color);
+    background-color: #09090b;
+    color: #ffffff;
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     background-image:
@@ -41,11 +32,39 @@
       radial-gradient(at 100% 0%, hsla(339, 49%, 30%, 0.2) 0, transparent 50%);
     background-attachment: fixed;
     min-height: 100vh;
+    transition: background-color 0.3s, color 0.3s;
+  }
+
+  /* Light theme */
+  html.light body {
+    background-color: #f4f4f5;
+    color: #18181b;
+    background-image:
+      radial-gradient(at 0% 0%, rgba(0, 242, 254, 0.05) 0, transparent 50%),
+      radial-gradient(at 50% 0%, rgba(79, 172, 254, 0.05) 0, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.05) 0, transparent 50%);
+  }
+
+  html.light .glass-panel {
+    background: rgba(255, 255, 255, 0.8);
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.05);
+  }
+
+  html.light .glass-input {
+    background: rgba(244, 244, 245, 0.8);
+    border-color: rgba(0, 0, 0, 0.1);
+    color: #18181b;
+  }
+
+  html.light .glass-input::placeholder {
+    color: #a1a1aa;
   }
 }
 
 .glass-panel {
   @apply bg-zinc-900/60 backdrop-blur-md border border-white/10 rounded-3xl shadow-xl;
+  transition: background 0.3s, border-color 0.3s;
 }
 
 .glass-input {
