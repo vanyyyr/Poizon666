@@ -47,16 +47,19 @@ def notify_new_order(
     user_telegram_id: str,
     username: str = None,
     commission_type: str = "insurance",
+    phone: str = None,
+    delivery_address: str = None,
 ):
-    """Notify managers about a new order with clickable username."""
+    """Notify managers about a new order with clickable username and full info."""
     items_text = ""
     for i, item in enumerate(items, 1):
-        items_text += f"\n  {i}. {item.get('size', '?')} — {item.get('price_yuan', 0)}¥"
+        items_text += f"\n  {i}. Размер: {item.get('size', '?')} — {item.get('price_yuan', 0)}¥"
         link = item.get('product_link', '')
         if link:
-            # Truncate long Chinese links
-            display_link = link[:60] + "..." if len(link) > 60 else link
-            items_text += f"\n     🔗 {display_link}"
+            items_text += f"\n     🔗 {link}"
+        comment = item.get('comment', '')
+        if comment:
+            items_text += f"\n     💬 {comment}"
 
     # Build clickable user link
     if username:
@@ -66,15 +69,23 @@ def notify_new_order(
 
     commission_label = COMMISSION_LABELS.get(commission_type, commission_type)
 
+    delivery_line = ""
+    if delivery_address:
+        delivery_line = f"\n📍 Доставка: {delivery_address}"
+
+    phone_line = ""
+    if phone:
+        phone_line = f"\n📞 Телефон: {phone}"
+
     text = (
         f"🛒 <b>Новый заказ #{order_id}</b>\n\n"
         f"👤 {user_fullname}\n"
-        f"💬 Написать: {user_link}\n"
-        f"🆔 ID: <code>{user_telegram_id}</code>\n\n"
+        f"💬 Написать: {user_link}"
+        f"{phone_line}"
+        f"{delivery_line}\n\n"
         f"💰 Итого: <b>{total_rubles:,.0f} ₽</b>\n"
-        f"📊 Тариф: {commission_label}\n"
-        f"📦 Товары ({len(items)} шт.):{items_text}\n\n"
-        f"Откройте панель для управления."
+        f"📊 Тариф: {commission_label}\n\n"
+        f"📦 Товары ({len(items)} шт.):{items_text}"
     )
     send_telegram_message(MANAGER_CHAT_ID, text)
 

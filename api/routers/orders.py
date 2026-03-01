@@ -81,6 +81,7 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
             "product_link": item.product_link,
             "size": item.size,
             "price_yuan": item.price_yuan,
+            "comment": item.comment,
         })
 
     db.commit()
@@ -96,6 +97,8 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
             user_telegram_id=order.user_telegram_id,
             username=order.username,
             commission_type=order.commission_type or "insurance",
+            phone=order.phone,
+            delivery_address=order.delivery_address,
         )
     except Exception as e:
         logger.error(f"Notification failed: {e}")
