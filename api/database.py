@@ -6,7 +6,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Use Supabase URL from environment, or default to the provided one (in production, set this in Vercel Env Vars!)
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:06112004RatII@@db.xjfrvfxuzijvuszpwfhd.supabase.co:5432/postgres")
+# The password contains an '@' so it must be URL-encoded as '%40'
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:06112004RatII%40@db.xjfrvfxuzijvuszpwfhd.supabase.co:5432/postgres")
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
