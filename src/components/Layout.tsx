@@ -1,4 +1,3 @@
-import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Home, PackageSearch, User as UserIcon } from 'lucide-react'
 import { clsx, type ClassValue } from 'clsx'
@@ -12,9 +11,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     const location = useLocation()
 
     const navItems = [
-        { name: 'Calculator', path: '/', icon: Home },
-        { name: 'Orders', path: '/orders', icon: PackageSearch },
-        { name: 'Admin', path: '/admin', icon: Settings },
+        { name: 'Калькулятор', path: '/', icon: Home },
+        { name: 'Заказы', path: '/orders', icon: PackageSearch },
+        { name: 'Профиль', path: '/profile', icon: UserIcon },
     ]
 
     return (
