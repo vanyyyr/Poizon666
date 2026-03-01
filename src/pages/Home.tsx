@@ -194,11 +194,50 @@ export default function Home() {
                             </div>
                             <div>
                                 <label className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1 block">📷 {t('order.image', lang)}</label>
-                                <input type="text" className="glass-input text-xs" placeholder={t('order.image_placeholder', lang)} value={item.imageUrl} onChange={e => updateItem(item.id, 'imageUrl', e.target.value)} onFocus={handleFocus} />
-                                {item.imageUrl && (
-                                    <div className="mt-2 rounded-xl overflow-hidden border border-white/5 max-h-32">
-                                        <img src={item.imageUrl} alt="" className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />
+                                {item.imageUrl ? (
+                                    <div className="relative mt-1">
+                                        <img src={item.imageUrl} alt="" className="w-full max-h-40 object-cover rounded-xl border border-white/10" />
+                                        <button type="button" onClick={() => updateItem(item.id, 'imageUrl', '')}
+                                            className="absolute top-2 right-2 bg-black/70 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-500 transition-colors">✕</button>
                                     </div>
+                                ) : (
+                                    <label className="flex items-center justify-center gap-2 glass-input cursor-pointer text-xs text-zinc-400 hover:text-brand-cyan hover:border-brand-cyan/30 transition-colors py-4">
+                                        <span>📷</span> {t('order.image_placeholder', lang)}
+                                        <input type="file" accept="image/*" capture="environment" className="hidden" onChange={async (e) => {
+                                            const file = e.target.files?.[0]
+                                            if (!file) return
+                                            // Compress image client-side
+                                            const compressed = await new Promise<Blob>((resolve) => {
+                                                const canvas = document.createElement('canvas')
+                                                const ctx = canvas.getContext('2d')!
+                                                const img = new Image()
+                                                img.onload = () => {
+                                                    const maxSize = 800
+                                                    let w = img.width, h = img.height
+                                                    if (w > maxSize || h > maxSize) {
+                                                        if (w > h) { h = Math.round(h * maxSize / w); w = maxSize }
+                                                        else { w = Math.round(w * maxSize / h); h = maxSize }
+                                                    }
+                                                    canvas.width = w; canvas.height = h
+                                                    ctx.drawImage(img, 0, 0, w, h)
+                                                    canvas.toBlob(blob => resolve(blob!), 'image/jpeg', 0.75)
+                                                }
+                                                img.src = URL.createObjectURL(file)
+                                            })
+                                            // Show local preview immediately
+                                            const localUrl = URL.createObjectURL(compressed)
+                                            updateItem(item.id, 'imageUrl', localUrl)
+                                            // Upload to server
+                                            try {
+                                                const formData = new FormData()
+                                                formData.append('file', compressed, 'photo.jpg')
+                                                const res = await api.post('/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+                                                updateItem(item.id, 'imageUrl', res.data.url)
+                                            } catch {
+                                                toast.error(t('order.image_error', lang))
+                                            }
+                                        }} />
+                                    </label>
                                 )}
                             </div>
                         </div>

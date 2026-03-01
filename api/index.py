@@ -56,11 +56,12 @@ except Exception:
     pass
 
 # Import and include routers
-from api.routers import orders, settings, broadcast
+from api.routers import orders, settings, broadcast, upload
 
 app.include_router(orders.router, prefix="/api/orders", tags=["orders"])
 app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
 app.include_router(broadcast.router, prefix="/api/broadcast", tags=["broadcast"])
+app.include_router(upload.router, prefix="/api/upload", tags=["upload"])
 
 @app.get("/api/health")
 def health_check():
