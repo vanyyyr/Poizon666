@@ -8,9 +8,14 @@ MANAGER_CHAT_ID = os.getenv("MANAGER_CHAT_ID", "709766413")
 
 TELEGRAM_API = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
+COMMISSION_LABELS = {
+    "insurance": "🛡️ Со страховкой (10%)",
+    "no_insurance": "⚡ Без страховки (7%)",
+    "wholesale": "📦 Опт (5%)",
+}
+
 
 def send_telegram_message(chat_id: str, text: str, parse_mode: str = "HTML"):
-    """Send a message via Telegram Bot API using urllib."""
     if not chat_id:
         logger.warning("No chat_id provided, skipping Telegram notification")
         return
@@ -34,24 +39,47 @@ def send_telegram_message(chat_id: str, text: str, parse_mode: str = "HTML"):
         logger.error(f"Failed to send Telegram message: {e}")
 
 
-def notify_new_order(order_id: int, total_rubles: float, items: list, user_fullname: str, user_telegram_id: str):
-    """Notify managers about a new order."""
+def notify_new_order(
+    order_id: int,
+    total_rubles: float,
+    items: list,
+    user_fullname: str,
+    user_telegram_id: str,
+    username: str = None,
+    commission_type: str = "insurance",
+):
+    """Notify managers about a new order with clickable username."""
     items_text = ""
-    for item in items:
-        items_text += f"\n  • {item.get('size', '?')} — {item.get('price_yuan', 0)}¥"
+    for i, item in enumerate(items, 1):
+        items_text += f"\n  {i}. {item.get('size', '?')} — {item.get('price_yuan', 0)}¥"
+        link = item.get('product_link', '')
+        if link:
+            # Truncate long Chinese links
+            display_link = link[:60] + "..." if len(link) > 60 else link
+            items_text += f"\n     🔗 {display_link}"
+
+    # Build clickable user link
+    if username:
+        user_link = f'<a href="https://t.me/{username}">@{username}</a>'
+    else:
+        user_link = f'<a href="tg://user?id={user_telegram_id}">{user_fullname}</a>'
+
+    commission_label = COMMISSION_LABELS.get(commission_type, commission_type)
 
     text = (
         f"🛒 <b>Новый заказ #{order_id}</b>\n\n"
-        f"👤 {user_fullname} (ID: {user_telegram_id})\n"
+        f"👤 {user_fullname}\n"
+        f"💬 Написать: {user_link}\n"
+        f"🆔 ID: <code>{user_telegram_id}</code>\n\n"
         f"💰 Итого: <b>{total_rubles:,.0f} ₽</b>\n"
-        f"📦 Товары:{items_text}\n\n"
+        f"📊 Тариф: {commission_label}\n"
+        f"📦 Товары ({len(items)} шт.):{items_text}\n\n"
         f"Откройте панель для управления."
     )
     send_telegram_message(MANAGER_CHAT_ID, text)
 
 
 def notify_status_change(user_telegram_id: str, order_id: int, new_status: str):
-    """Notify the client about their order status change."""
     status_labels = {
         'New': '🆕 Новый',
         'Awaiting Payment': '💳 Ожидает оплаты',

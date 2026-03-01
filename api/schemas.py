@@ -26,8 +26,10 @@ class OrderBase(BaseModel):
 class OrderCreate(OrderBase):
     user_telegram_id: str
     fullname: str
+    username: Optional[str] = None
     phone: Optional[str] = None
     delivery_address: Optional[str] = None
+    commission_type: Optional[str] = "insurance"  # insurance | no_insurance | wholesale
     items: List[OrderItemCreate]
 
 class OrderResponse(OrderBase):
@@ -43,6 +45,12 @@ class OrderResponse(OrderBase):
 
     class Config:
         from_attributes = True
+
+class OrderUpdate(BaseModel):
+    track_rf: Optional[str] = None
+    track_china: Optional[str] = None
+    weight: Optional[float] = None
+    delivery_cost: Optional[float] = None
 
 class SettingsUpdate(BaseModel):
     exchange_rate: float

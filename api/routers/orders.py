@@ -9,6 +9,12 @@ import logging
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+COMMISSION_RATES = {
+    "insurance": 10,
+    "no_insurance": 7,
+    "wholesale": 5,
+}
+
 @router.post("", response_model=schemas.OrderResponse, status_code=201)
 def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
     settings = db.query(models.Settings).first()
@@ -25,7 +31,8 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
             telegram_id=order.user_telegram_id,
             fullname=order.fullname,
             phone=order.phone,
-            delivery_address=order.delivery_address
+            delivery_address=order.delivery_address,
+            nickname=order.username,
         )
         db.add(user)
         db.commit()
@@ -34,14 +41,16 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
         user.fullname = order.fullname
         user.phone = order.phone or user.phone
         user.delivery_address = order.delivery_address or user.delivery_address
+        user.nickname = order.username or user.nickname
         db.commit()
 
-    # Calculate total
+    # Calculate total using commission type
     rate = settings.exchange_rate
+    commission_pct = COMMISSION_RATES.get(order.commission_type or "insurance", 10)
     total_rubles = 0
     for item in order.items:
         item_rubles = item.price_yuan * item.quantity * rate
-        commission_amount = item_rubles * (settings.commission_percent / 100)
+        commission_amount = item_rubles * (commission_pct / 100)
         total_rubles += item_rubles + commission_amount
 
     total_rubles = round(total_rubles)
@@ -85,6 +94,8 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
             items=items_data,
             user_fullname=order.fullname,
             user_telegram_id=order.user_telegram_id,
+            username=order.username,
+            commission_type=order.commission_type or "insurance",
         )
     except Exception as e:
         logger.error(f"Notification failed: {e}")
@@ -106,7 +117,7 @@ def get_orders(telegram_id: str = None, db: Session = Depends(get_db)):
 def update_order_status(order_id: int, status_update: schemas.OrderStatusUpdate, db: Session = Depends(get_db)):
     valid_statuses = ['New', 'Awaiting Payment', 'Purchased', 'At China Warehouse', 'Sent to RF (Russia)', 'Received']
     if status_update.status not in valid_statuses:
-        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
+        raise HTTPException(status_code=400, detail=f"Invalid status")
 
     order = db.query(models.Order).filter(models.Order.id == order_id).first()
     if not order:
@@ -119,12 +130,37 @@ def update_order_status(order_id: int, status_update: schemas.OrderStatusUpdate,
     try:
         user = db.query(models.User).filter(models.User.id == order.user_id).first()
         if user and user.telegram_id:
-            notify_status_change(
-                user_telegram_id=user.telegram_id,
-                order_id=order.id,
-                new_status=status_update.status,
-            )
+            notify_status_change(user.telegram_id, order.id, status_update.status)
     except Exception as e:
         logger.error(f"Status notification failed: {e}")
 
     return order
+
+@router.patch("/{order_id}", response_model=schemas.OrderResponse)
+def update_order(order_id: int, update: schemas.OrderUpdate, db: Session = Depends(get_db)):
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    if update.track_rf is not None:
+        order.track_rf = update.track_rf
+    if update.track_china is not None:
+        order.track_china = update.track_china
+    if update.weight is not None:
+        order.weight = update.weight
+    if update.delivery_cost is not None:
+        order.delivery_cost = update.delivery_cost
+
+    db.commit()
+    db.refresh(order)
+    return order
+
+@router.delete("/{order_id}")
+def delete_order(order_id: int, db: Session = Depends(get_db)):
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    db.delete(order)
+    db.commit()
+    return {"ok": True, "deleted": order_id}
