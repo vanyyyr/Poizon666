@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { api } from '../api'
-import { Settings2, Save, Users, TrendingUp, PackageSearch, ChevronDown, Lock, RefreshCw } from 'lucide-react'
+import { Settings2, Save, Users, TrendingUp, PackageSearch, ChevronDown, Lock, RefreshCw, Send, Megaphone } from 'lucide-react'
 import toast from 'react-hot-toast'
 import WebApp from '@twa-dev/sdk'
 
@@ -59,7 +59,10 @@ export default function Admin() {
     const [orders, setOrders] = useState<Order[]>([])
     const [ordersLoading, setOrdersLoading] = useState(true)
     const [orderCount, setOrderCount] = useState(0)
+    const [broadcastMsg, setBroadcastMsg] = useState('')
+    const [broadcasting, setBroadcasting] = useState(false)
 
+    // Check if already authenticated from session
     useEffect(() => {
         const saved = sessionStorage.getItem('poizon_admin')
         if (saved === 'true') setIsAuthenticated(true)
@@ -333,6 +336,50 @@ export default function Admin() {
                         ))}
                     </div>
                 )}
+            </div>
+
+            {/* Broadcast / Mailing */}
+            <div className="glass-panel p-6">
+                <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
+                    <div className="p-2 bg-green-500/10 rounded-xl">
+                        <Megaphone className="text-green-400 w-5 h-5" />
+                    </div>
+                    <h2 className="text-lg font-bold text-white">Рассылка</h2>
+                </div>
+
+                <div className="flex flex-col gap-4">
+                    <textarea
+                        className="glass-input min-h-[100px] resize-none"
+                        placeholder="Сообщение для рассылки всем пользователям..."
+                        value={broadcastMsg}
+                        onChange={e => setBroadcastMsg(e.target.value)}
+                    />
+                    <button
+                        type="button"
+                        disabled={broadcasting || !broadcastMsg.trim()}
+                        onClick={async () => {
+                            if (!broadcastMsg.trim()) return
+                            setBroadcasting(true)
+                            try {
+                                const res = await api.post('/broadcast', {
+                                    message: broadcastMsg,
+                                    chat_ids: ['709766413'],
+                                })
+                                toast.success(`Отправлено: ${res.data.sent}`)
+                                setBroadcastMsg('')
+                                if ((window as any).Telegram?.WebApp) WebApp.HapticFeedback.notificationOccurred('success')
+                            } catch (err) {
+                                toast.error('Ошибка рассылки')
+                            } finally {
+                                setBroadcasting(false)
+                            }
+                        }}
+                        className="relative overflow-hidden rounded-2xl px-6 py-3 font-bold text-white shadow-lg transition-transform hover:scale-[1.02] active:scale-95 flex justify-center items-center gap-2 disabled:opacity-50"
+                        style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)' }}
+                    >
+                        {broadcasting ? 'Отправка...' : (<><Send className="w-4 h-4" /> Отправить рассылку</>)}
+                    </button>
+                </div>
             </div>
 
             <p className="text-center text-[10px] text-zinc-600 px-4">
