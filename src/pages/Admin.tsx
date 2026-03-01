@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { api } from '../api'
-import { Settings2, Save, Users, TrendingUp, PackageSearch, ChevronDown } from 'lucide-react'
+import { Settings2, Save, Users, TrendingUp, PackageSearch, ChevronDown, Lock } from 'lucide-react'
 import toast from 'react-hot-toast'
 import WebApp from '@twa-dev/sdk'
+
+const ADMIN_PASSWORD = 'qwerty'
 
 interface OrderItem {
     product_link: string;
@@ -47,6 +49,8 @@ const statusColors: Record<string, string> = {
 }
 
 export default function Admin() {
+    const [isAuthenticated, setIsAuthenticated] = useState(false)
+    const [passwordInput, setPasswordInput] = useState('')
     const [exchangeRate, setExchangeRate] = useState(0)
     const [commission, setCommission] = useState(0)
     const [loading, setLoading] = useState(true)
@@ -55,17 +59,28 @@ export default function Admin() {
     const [ordersLoading, setOrdersLoading] = useState(true)
     const [orderCount, setOrderCount] = useState(0)
 
+    // Check if already authenticated from session
     useEffect(() => {
-        // Load settings
+        const saved = sessionStorage.getItem('poizon_admin')
+        if (saved === 'true') {
+            setIsAuthenticated(true)
+        }
+    }, [])
+
+    useEffect(() => {
+        if (!isAuthenticated) return
+
         api.get('/settings')
             .then(res => {
                 setExchangeRate(res.data.exchange_rate)
                 setCommission(res.data.commission)
                 setLoading(false)
             })
-            .catch(console.error)
+            .catch(err => {
+                console.error('Settings error:', err)
+                setLoading(false)
+            })
 
-        // Load all orders (admin sees all)
         api.get('/orders')
             .then(res => {
                 setOrders(res.data)
@@ -73,10 +88,27 @@ export default function Admin() {
                 setOrdersLoading(false)
             })
             .catch(err => {
-                console.error('Failed to load orders:', err)
+                console.error('Orders error:', err)
                 setOrdersLoading(false)
             })
-    }, [])
+    }, [isAuthenticated])
+
+    const handleLogin = (e: React.FormEvent) => {
+        e.preventDefault()
+        if (passwordInput === ADMIN_PASSWORD) {
+            setIsAuthenticated(true)
+            sessionStorage.setItem('poizon_admin', 'true')
+            toast.success('Доступ разрешён')
+            if ((window as any).Telegram?.WebApp) {
+                WebApp.HapticFeedback.notificationOccurred('success')
+            }
+        } else {
+            toast.error('Неверный пароль')
+            if ((window as any).Telegram?.WebApp) {
+                WebApp.HapticFeedback.notificationOccurred('error')
+            }
+        }
+    }
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -107,6 +139,40 @@ export default function Admin() {
         }
     }
 
+    // --- Password Gate ---
+    if (!isAuthenticated) {
+        return (
+            <div className="w-full flex flex-col items-center justify-center gap-6 mt-10 stagger-1">
+                <div className="glass-panel p-8 w-full max-w-sm">
+                    <div className="flex flex-col items-center gap-4 mb-6">
+                        <div className="p-4 bg-brand-purple/10 rounded-2xl">
+                            <Lock className="text-brand-purple w-8 h-8" />
+                        </div>
+                        <h2 className="text-xl font-bold text-white">Панель Администратора</h2>
+                        <p className="text-xs text-zinc-400 text-center">Введите пароль для доступа</p>
+                    </div>
+                    <form onSubmit={handleLogin} className="flex flex-col gap-4">
+                        <input
+                            type="password"
+                            className="glass-input text-center text-lg tracking-widest"
+                            placeholder="••••••"
+                            value={passwordInput}
+                            onChange={e => setPasswordInput(e.target.value)}
+                            autoFocus
+                        />
+                        <button
+                            type="submit"
+                            className="btn-primary flex items-center justify-center gap-2"
+                        >
+                            <Lock className="w-4 h-4" /> Войти
+                        </button>
+                    </form>
+                </div>
+            </div>
+        )
+    }
+
+    // --- Admin Panel ---
     if (loading) {
         return <div className="text-center text-zinc-500 mt-10 animate-pulse">Загрузка панели...</div>
     }
@@ -220,7 +286,6 @@ export default function Admin() {
                                     </span>
                                 </div>
 
-                                {/* Items preview */}
                                 <div className="mb-3 text-xs text-zinc-400 space-y-1">
                                     {order.items.map((item, idx) => (
                                         <div key={idx} className="flex justify-between">
@@ -230,7 +295,6 @@ export default function Admin() {
                                     ))}
                                 </div>
 
-                                {/* Status Selector */}
                                 <div className="relative">
                                     <select
                                         value={order.status}

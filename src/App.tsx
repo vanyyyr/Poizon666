@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import WebApp from '@twa-dev/sdk'
@@ -8,20 +8,30 @@ import Admin from './pages/Admin'
 import Orders from './pages/Orders'
 import Profile from './pages/Profile'
 import Layout from './components/Layout'
+import SplashScreen from './components/SplashScreen'
 
 function App() {
+  const [showSplash, setShowSplash] = useState(true)
+
   useEffect(() => {
     // Initialize Telegram Web App
     WebApp.ready()
-    WebApp.expand() // Expand to fill screen
+    WebApp.expand()
 
-    // Auto-detect theme based on Telegram Web App parameters
     if (WebApp.colorScheme === 'dark') {
       document.documentElement.classList.add('dark')
     } else {
       document.documentElement.classList.remove('dark')
     }
   }, [])
+
+  const handleSplashFinish = useCallback(() => {
+    setShowSplash(false)
+  }, [])
+
+  if (showSplash) {
+    return <SplashScreen onFinish={handleSplashFinish} />
+  }
 
   return (
     <BrowserRouter>

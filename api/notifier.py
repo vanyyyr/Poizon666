@@ -1,30 +1,35 @@
 import os
 import logging
-import httpx
 
 logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8484976479:AAH-gB39CO4ABKxx0KUkFViNmCFZnox0GwA")
-# Manager chat/group ID - set this to your manager group or personal chat ID
 MANAGER_CHAT_ID = os.getenv("MANAGER_CHAT_ID", "")
 
 TELEGRAM_API = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
 
 def send_telegram_message(chat_id: str, text: str, parse_mode: str = "HTML"):
-    """Send a message via Telegram Bot API (synchronous for serverless)."""
+    """Send a message via Telegram Bot API using urllib (no extra dependencies)."""
     if not chat_id:
         logger.warning("No chat_id provided, skipping Telegram notification")
         return
     try:
-        with httpx.Client(timeout=10) as client:
-            resp = client.post(f"{TELEGRAM_API}/sendMessage", json={
-                "chat_id": chat_id,
-                "text": text,
-                "parse_mode": parse_mode,
-            })
-            if resp.status_code != 200:
-                logger.error(f"Telegram API error: {resp.text}")
+        import urllib.request
+        import json
+        data = json.dumps({
+            "chat_id": chat_id,
+            "text": text,
+            "parse_mode": parse_mode,
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            f"{TELEGRAM_API}/sendMessage",
+            data=data,
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            if resp.status != 200:
+                logger.error(f"Telegram API error: {resp.read()}")
     except Exception as e:
         logger.error(f"Failed to send Telegram message: {e}")
 
@@ -33,7 +38,7 @@ def notify_new_order(order_id: int, total_rubles: float, items: list, user_fulln
     """Notify managers about a new order."""
     items_text = ""
     for item in items:
-        items_text += f"\n  • <a href='{item.get('product_link', '#')}'>{item.get('size', '?')}</a> — {item.get('price_yuan', 0)}¥"
+        items_text += f"\n  • {item.get('size', '?')} — {item.get('price_yuan', 0)}¥"
 
     text = (
         f"🛒 <b>Новый заказ #{order_id}</b>\n\n"

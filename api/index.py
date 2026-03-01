@@ -1,10 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.database import engine, Base
-from api.routers import orders, settings
+import logging
 
-# Create tables on first run
-Base.metadata.create_all(bind=engine)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Poizon666 App API")
 
@@ -17,12 +15,30 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount routers under /api prefix
-# Vercel rewrites /api/* -> /api/index.py
-# FastAPI then handles /api/orders, /api/settings, etc.
+# Lazy table creation — only when DB is actually needed
+_tables_created = False
+
+def ensure_tables():
+    global _tables_created
+    if not _tables_created:
+        try:
+            from api.database import engine, Base
+            from api import models
+            Base.metadata.create_all(bind=engine)
+            _tables_created = True
+        except Exception as e:
+            logger.error(f"Failed to create tables: {e}")
+
+# Import and include routers
+from api.routers import orders, settings
+
 app.include_router(orders.router, prefix="/api/orders", tags=["orders"])
 app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
 
 @app.get("/api/health")
 def health_check():
     return {"status": "ok", "message": "Poizon666 Backend is running!"}
+
+@app.on_event("startup")
+async def startup_event():
+    ensure_tables()
