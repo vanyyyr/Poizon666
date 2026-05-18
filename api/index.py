@@ -1,23 +1,59 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 import logging
 import traceback
+import sys
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Poizon666 App API", redirect_slashes=False)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan manager for startup and shutdown events."""
+    # Startup
+    logger.info("Starting Poizon666 API...")
+    try:
+        run_migrations()
+        logger.info("Database migrations completed successfully")
+    except Exception as e:
+        logger.error(f"Migration failed: {e}")
+    
+    yield
+    
+    # Shutdown
+    logger.info("Shutting down Poizon666 API...")
+    from api.database import engine
+    engine.dispose()
+
+app = FastAPI(
+    title="Poizon666 App API",
+    description="API for Poizon666 Telegram Web App - Order management system",
+    version="1.0.0",
+    redirect_slashes=False,
+    lifespan=lifespan
+)
+
+# Configure CORS with specific origins in production
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS if ALLOWED_ORIGINS != ["*"] else ["*"],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 _migrated = False
 
 def run_migrations():
+    """Run database schema migrations."""
     global _migrated
     if _migrated:
         return
@@ -25,6 +61,7 @@ def run_migrations():
         from api.database import engine
         from sqlalchemy import text
         with engine.connect() as conn:
+            # Check and rename column if needed
             conn.execute(text("""
                 DO $$
                 BEGIN
@@ -41,6 +78,7 @@ def run_migrations():
                     END IF;
                 END $$;
             """))
+            # Fix invalid commission values
             conn.execute(text("UPDATE settings SET commission_percent = 10.0 WHERE commission_percent > 100"))
             conn.commit()
         _migrated = True
@@ -48,6 +86,7 @@ def run_migrations():
     except Exception as e:
         logger.error(f"Migration failed: {e}")
         _migrated = True
+        raise  # Re-raise to fail fast on startup
 
 # Try migration but don't crash if it fails
 try:
@@ -58,16 +97,19 @@ except Exception:
 # Import and include routers
 from api.routers import orders, settings, broadcast, upload
 
-app.include_router(orders.router, prefix="/api/orders", tags=["orders"])
-app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
-app.include_router(broadcast.router, prefix="/api/broadcast", tags=["broadcast"])
-app.include_router(upload.router, prefix="/api/upload", tags=["upload"])
+app.include_router(orders.router, prefix="/api/orders", tags=["Orders"])
+app.include_router(settings.router, prefix="/api/settings", tags=["Settings"])
+app.include_router(broadcast.router, prefix="/api/broadcast", tags=["Broadcast"])
+app.include_router(upload.router, prefix="/api/upload", tags=["Upload"])
 
-@app.get("/api/health")
+
+@app.get("/api/health", tags=["Health"])
 def health_check():
+    """Health check endpoint."""
     return {"status": "ok", "message": "Poizon666 Backend is running!"}
 
-@app.get("/api/db-test")
+
+@app.get("/api/db-test", tags=["Health"])
 def db_test():
     """Diagnostic endpoint to test database connectivity."""
     from api.database import test_connection, DATABASE_URL
@@ -103,7 +145,7 @@ def db_test():
     return result
 
 
-@app.get("/api/stats")
+@app.get("/api/stats", tags=["Stats"])
 def get_stats():
     """Get dynamic stats: channel subscribers + unique users."""
     import urllib.request
@@ -120,8 +162,8 @@ def get_stats():
             data = json.loads(resp.read())
             if data.get("ok"):
                 stats["subscribers"] = data["result"]
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Failed to fetch Telegram stats: {e}")
 
     # Count unique users from database
     try:
@@ -130,7 +172,7 @@ def get_stats():
         with engine.connect() as conn:
             row = conn.execute(text("SELECT COUNT(*) FROM users")).scalar()
             stats["unique_users"] = row or 0
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Failed to fetch user stats: {e}")
 
     return stats
